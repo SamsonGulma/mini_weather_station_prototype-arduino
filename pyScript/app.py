@@ -1,5 +1,4 @@
 
-### === Python Serial Reader + Flask API (app.py) ===
 from flask import Flask, jsonify, render_template
 import serial
 import threading
