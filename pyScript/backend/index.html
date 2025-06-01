@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weather Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="h-screen flex bg-[#f6f8fb] text-gray-800 font-sans">
+    <div class="flex w-full">
+
+        <aside class="w-[300px] bg-[#eaf0f8] p-6 flex flex-col justify-between">
+            <h2 class="font-bold text-lg">⚡ Mini Weather Station</h2>
+            <div class="space-y-2">
+                <p>🔔Set Alert</p>
+            </div>
+        </aside>
+
+        <main class="flex flex-col p-8">
+            <header class="flex justify-between items-center">
+                <div>
+                    <h3 class="text-xl font-semibold">Weather Station</h3>
+                </div>
+                
+            </header>
+
+            <div>
+
+                <section class="mt-8">
+                    <h4 class="text-lg font-medium">Today Overview</h4>
+                    <div class="flex gap-4 mt-4">
+                        <div class="flex-1 bg-white p-4 rounded-xl shadow-sm">🌬️ Temperature<br><strong id="temp">--
+                                °C</strong></div>
+                        <div class="flex-1 bg-white p-4 rounded-xl shadow-sm">🌧️ Humidity<br><strong id="humidity">--
+                                %</strong></div>
+                        <div class="flex-1 bg-white p-4 rounded-xl shadow-sm">🌡️ Light Intensity<br><strong id="light">--
+                                lx</strong></div>
+                        </div>
+                    </div>
+                </section>
+    
+                <section class="mt-8 flex flex-col gap-4" style="width: 100%; height: 800px;">
+                    <h4 class="text-lg font-medium">Weather Overview</h4>
+                    <canvas style="height: '900px'; width: '900px';" id="weatherChart" class="w-full h-full"></canvas>
+                </section>
+            </div>
+        </main>
+
+        <aside class="w-[350px] bg-gradient-to-b from-[#223f75] to-[#3b5998] text-white p-6">
+            <h3 class="text-xl font-semibold">some thing and something<br>
+                <span class="text-sm">Adama, Ethiopia</span>
+            </h3>
+            <div class="weather mt-4">
+                <p class="text-4xl font-bold" id="live-temp">--°C</p>
+                <p class="text-sm" id="live-desc">Loading...</p>
+            </div>
+            <div class="mt-6">
+                <p class="font-medium">Chance of rain</p>
+                <ul class="mt-2 space-y-1 text-sm">
+                    <li>7 PM - 44%</li>
+                    <li>8 PM - 30%</li>
+                    <li>9 PM - 67%</li>
+                    <li>10 PM - 72%</li>
+                </ul>
+            </div>
+            <div class="mt-6 text-sm">
+                <p>🌅 Sunrise: 4:20 AM</p>
+                <p>🌇 Sunset: 5:50 PM</p>
+            </div>
+            <div class="mt-6 text-sm" id="alerts" style="max-height: 100px; overflow-y: auto;"></div>
+        </aside>
+
+    </div>
+
+    <script src="./jscript.js">
+        let tempChart;
+
+        function updateDate() {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date').textContent = now.toLocaleDateString(undefined, options);
+        }
+
+        async function fetchLiveData() {
+            try {
+                const res = await fetch('/data');
+                const data = await res.json();
+
+                document.getElementById('live-temp').textContent = `${data.temp.toFixed(1)}°C`;
+                document.getElementById('live-desc').textContent = `Humidity: ${data.hum.toFixed(1)}%, Light: ${data.light}`;
+                document.getElementById('wind').textContent = `${(Math.random() * 15 + 5).toFixed(1)} km/h`;
+                document.getElementById('rain').textContent = `${(data.hum * 0.6).toFixed(1)} %`;
+                document.getElementById('pressure').textContent = `${(720 + Math.random() * 20).toFixed(1)} hPa`;
+                document.getElementById('uv').textContent = `${(Math.random() * 10).toFixed(1)}`;
+            } catch (err) {
+                console.error('Live data fetch error:', err);
+            }
+        }
+
+        async function fetchHistoryData() {
+            try {
+                const res = await fetch('/history');
+                const data = await res.json();
+                const labels = data.map(d => d.time);
+                const temps = data.map(d => d.temp);
+
+                if (!tempChart) {
+                    const ctx = document.getElementById('tempChart').getContext('2d');
+                    tempChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels,
+                            datasets: [{
+                                label: 'Temperature (°C)',
+                                data: temps,
+                                borderColor: '#1f5eff',
+                                backgroundColor: 'rgba(31, 94, 255, 0.2)',
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    beginAtZero: false,
+                                    suggestedMin: 10,
+                                    suggestedMax: 40
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    tempChart.data.labels = labels;
+                    tempChart.data.datasets[0].data = temps;
+                    tempChart.update();
+                }
+            } catch (err) {
+                console.error('History data fetch error:', err);
+            }
+        }
+
+        async function fetchAlerts() {
+            try {
+                const res = await fetch('/alerts');
+                const alerts = await res.json();
+                const alertBox = document.getElementById('alerts');
+                alertBox.innerHTML = "<strong>⚠ Alerts</strong><br>" +
+                    alerts.slice(-5).reverse().map(a => `<p>${a.type.toUpperCase()} at ${a.time}: ${a.value}</p>`).join('');
+            } catch (err) {
+                console.error('Alert fetch error:', err);
+            }
+        }
+
+        updateDate();
+        fetchLiveData();
+        fetchHistoryData();
+        fetchAlerts();
+
+        setInterval(() => {
+            fetchLiveData();
+            fetchHistoryData();
+            fetchAlerts();
+        }, 5000);
+    </script>
+</body>
+
+</html>
