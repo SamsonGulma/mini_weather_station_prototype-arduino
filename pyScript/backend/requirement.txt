@@ -1,5 +1,0 @@
-
-
-flask
-pyserial
-flask-cors
